@@ -1,0 +1,10 @@
+# Pfad zum speichern: /etc/systemd/system/sungrow_to_db.timer
+[Unit]
+Description=Timer zum Aufruf der Wettersektor Export Service Unit
+
+[Timer]
+OnCalendar=*:0/5
+Unit=sungrow_to_db.service
+
+[Install]
+WantedBy=multi-user.target
