@@ -52,10 +52,27 @@ def round_time(dt=None, round_to=10):
     return dt + datetime.timedelta(0, rounding - seconds, -dt.microsecond)
 
 
+def get_timezone():
+    return datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+
+
+def change_ts_to_utc(ts):
+    tz = get_timezone()
+    ts_utc = ts.replace(tzinfo=tz).utcnow()
+    ts_utc = ts_utc.replace(tzinfo=datetime.timezone.utc)
+    return ts_utc
+
+
+def change_ts_to_locale_time(ts):
+    tz = get_timezone()
+    ts_local = ts.astimezone(tz)
+    return ts_local
+
+
 def daten_aufbereiten(data):
     daten = {}
     for datum in data:
-        ts = round_time(datetime.datetime.fromtimestamp(datum.ts / 1000))
+        ts = change_ts_to_utc(round_time(datetime.datetime.fromtimestamp(datum.ts / 1000)))
         if ts not in daten:
             daten[ts] = db_postgrest.SungrowPV(ts=ts)
         daten[ts].__setattr__(get_name_from_dataid(datum.id), datum.val)
@@ -73,13 +90,14 @@ def main():
     if not url.endswith("/"):
         url = f"{url}/"
 
-    letzter_ts_server = db_postgrest.hole_letzten_ts(url, CONFIG["zieldb"]["tabellenname"], headers)
+    letzter_ts_server_utc = db_postgrest.hole_letzten_ts(url, CONFIG["zieldb"]["tabellenname"], headers)
+    letzter_ts_server_local = change_ts_to_locale_time(letzter_ts_server_utc)
     source_id = get_sourceid()
-    rawdata = get_rawdata(source_id, letzter_ts_server)
+    rawdata = get_rawdata(source_id, letzter_ts_server_local)
     daten = daten_aufbereiten(rawdata)
     if daten:
         db_postgrest.sende_daten(url, CONFIG["zieldb"]["tabellenname"], headers, daten, LOGGER)
-    delete_old_data(letzter_ts_server)
+    delete_old_data(letzter_ts_server_local)
 
 
 if __name__ == "__main__":
