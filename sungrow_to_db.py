@@ -38,7 +38,7 @@ def get_name_from_dataid(dataid):
     return name[index:]
 
 
-def round_time(dt=None, round_to=10):
+def round_time(dt=None, round_to=CONFIG["round_to"]):
     """
     Round a datetime object to any time-lapse in seconds
     dt : datetime.datetime object, default now.
@@ -58,8 +58,8 @@ def get_timezone():
 
 def change_ts_to_utc(ts):
     tz = get_timezone()
-    ts_utc = ts.replace(tzinfo=tz).utcnow()
-    ts_utc = ts_utc.replace(tzinfo=datetime.timezone.utc)
+    ts = ts.replace(tzinfo=tz)
+    ts_utc = ts.astimezone(datetime.timezone.utc)
     return ts_utc
 
 
@@ -72,7 +72,8 @@ def change_ts_to_locale_time(ts):
 def daten_aufbereiten(data):
     daten = {}
     for datum in data:
-        ts = change_ts_to_utc(round_time(datetime.datetime.fromtimestamp(datum.ts / 1000)))
+        ts = round_time(datetime.datetime.fromtimestamp(datum.ts / 1000))
+        ts = change_ts_to_utc(ts)
         if ts not in daten:
             daten[ts] = db_postgrest.SungrowPV(ts=ts)
         daten[ts].__setattr__(get_name_from_dataid(datum.id), datum.val)
